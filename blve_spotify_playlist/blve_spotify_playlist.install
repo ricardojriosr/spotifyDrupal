@@ -1,0 +1,41 @@
+<?php 
+
+function blve_spotify_playlist_field_schema($field){
+	if ($field['type']=='blve_spotify_playlist'){
+	  return array(
+	    'columns' => array(
+	      'playlist_id' => array(
+	        'type' => 'varchar',
+	        'length' => 32,
+	        'not null' => TRUE,
+	      ),
+	    ),
+	  );
+	}
+}
+
+/*
+function blve_spotify_playlist_schema(){
+  $schema['blve_spotify_blacktracks'] = array(
+    'description' => 'Stores the backtone id for a blve_spotify track',
+    'fields' => array(
+      'trackId' => array(
+        'description' => 'blve_spotify Track id.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'backtoneId' => array(
+        'description' => 'Provider Backtone ID.',
+        'type' => 'varchar',
+        'length' => 160,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('trackId'),
+  );
+  return $schema;
+}
+*/

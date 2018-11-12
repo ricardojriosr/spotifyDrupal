@@ -1,0 +1,651 @@
+<?php
+
+/**
+ * Implements hook_field_info().
+ */
+function blve_spotify_playlist_field_info() {
+  return array(
+      'blve_spotify_playlist' => array(
+          'label' => t('Spotify Playlist'),
+          'description' => t('This field stores a Spotify Playlist.'),
+          'default_widget' => 'blve_spotify_playlist_field',
+          'default_formatter' => 'blve_spotify_playlist_player',
+      ),
+  );
+}
+
+
+/**
+ * Implements hook_menu(). 
+ */
+function blve_spotify_playlist_menu(){
+  $items['spotify/reproducir/%/%'] = array(
+      'page callback' => 'blve_spotify_playlist_callback_page',
+      'page arguments' => array(2,3),
+      'type' => MENU_CALLBACK,
+      'access callback' => TRUE,
+  );
+  
+  return $items;
+}	
+
+	
+/**
+ * blve_spotify_playlist_callback_page
+ */
+
+function blve_spotify_playlist_callback_page($action, $Id){ //TODO
+  switch($action){
+    case 'playlist':
+      $action='PlayPlaylist';
+      $url= '//www.spotify.com/playlist/'.$Id;
+      break;
+    case 'track':
+      $action='PlayTrack';
+      $url= '//www.spotify.com/track/'.$Id;
+      break;
+    case 'album':
+      $action='PlayAlbum';
+      $url= '//www.spotify.com/album/'.$Id;
+      break;
+  }
+	if (module_exists('blve_stats')){
+		blve_stats_register_action($action,$Id);
+  }
+  drupal_goto($url, array('external' => TRUE));
+}
+
+/**
+ * Implements hook_field_widget_info
+ */
+function blve_spotify_playlist_field_widget_info(){
+		return array(
+				'blve_spotify_playlist_field' => array(
+						'label' => t('Spotify Playlist Selector'),
+						'field types' => array('blve_spotify_playlist'),
+				),
+		);
+}
+
+
+/**
+ * Implements hook_field_is_empty
+ * @param unknown_type $item: An item that may or may not be empty.
+ * @param unknown_type $field: The field to which $item belongs
+ */
+function blve_spotify_playlist_field_is_empty($item, $field){
+  if (empty($item['playlist_id']) && (string) $item['playlist_id'] !== '0') {
+		return TRUE;
+	}
+	
+	return FALSE;
+}
+
+/**
+ * Implements hook_field_settings_form().
+ */
+function blve_spotify_playlist_field_settings_form($field, $instance, $has_data) {
+	
+	error_log("inicio blve_spotify_playlist_field_settings_form \n",3,'/mnt/var/log/registro.log');
+	
+  $settings = $field['settings'];
+  $form['spotify_user_id'] = array(
+      '#type' => 'textfield',
+      '#title' => t("Spotify User ID"),
+      '#default_value' => @$settings['spotify_user_id'],
+      '#required' => TRUE,
+      //'#element_validate' => array('blve_spotify_playlist_spotify_user_id_validate'), //TODO CHECK!
+      '#description' => t('Spotify User ID, that creates the playlists.'),
+  );
+  return $form;
+}
+
+/**
+ * Implements hook_field_validate().
+ */
+function blve_spotify_playlist_spotify_user_id_validate($element, $form_state) {
+	
+	error_log("blve_spotify_playlist_spotify_user_id_validate form_state: ".print_r( $form_state, TRUE)."\n",3,'/mnt/var/log/registro.log');
+	
+	error_log("blve_spotify_playlist_spotify_user_id_validate spotify_user_id: ".$form_state['values']['spotify_user_id']."\n",3,'/mnt/var/log/registro.log');
+	
+	if (strlen($form_state['values']['spotify_user_id'] < 3)) {
+    form_error($element, t('You must enter a valid user ID. Too short.'));
+  }
+	
+	/*
+  if (!ctype_alpha($form_state['values']['spotify_user_id'])) {
+    form_error($element, t('You must enter a valid user ID!'));
+  }
+  */
+}
+
+/**
+ * Implements hook_field_widget_form(). //TODO
+ */
+function blve_spotify_playlist_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+	
+	error_log("inicio blve_spotify_playlist_field_widget_form \n",3,'/mnt/var/log/registro.log');
+	
+  switch ($instance['widget']['type']) {
+    case 'blve_spotify_playlist_field':
+    
+    	error_log("blve_spotify_playlist_field_widget_form  CASE blve_spotify_playlist_field \n",3,'/mnt/var/log/registro.log');
+    	//module_load_include('inc','Spotify');
+    	//$Spotify= new Spotify(variable_get('Spotify_appid'),variable_get('Spotify_secret'));
+    	
+    	//module_load_include('inc','blve_spotify');
+    	module_load_include('php', 'blve_spotify', '../blve_spotify.class.php');
+    	$spotify = blve_spotify_class::getInstance(); //instance of the class
+    	$options=array('0'=>'-');
+    	
+    	error_log("blve_spotify_playlist_field_widget_form spotify_user_id: ".$field['settings']['spotify_user_id']."\n",3,'/mnt/var/log/registro.log');
+    	
+    	//$options+=$spotify->GetPlayLists($field['settings']['spotify_user_id']); //con que formato viene!
+    	$options = $spotify->GetPlayLists($field['settings']['spotify_user_id']); //con que formato viene!
+      
+    	$path = drupal_get_path('module', 'blve_spotify_playlist');
+    	drupal_add_css($path . '/css/blve_spotify_playlist.admin.css'); //TODO 
+      drupal_add_js($path.'/js/blve_spotify_playlist.admin.js'); //TODO
+
+      $playlistId=null;
+      $albumId=null;
+      if (isset($items[$delta]['playlist_id'])){
+        $value=$items[$delta]['playlist_id'];
+        if (!$albumId=blve_spotify_playlist_isAlbumId($value)){ //not needed
+          $playlistId=$value;
+        }
+      }
+      $element['playlist_id'] = array(
+        '#type' => 'textfield',
+        '#title' => $element['#title'],
+        '#size' => 10,
+        '#element_validate'=>array('blve_spotify_playlist_validate_field'),
+        '#default_value' =>$playlistId,
+      );
+      $element['playlist_helper'] = array(
+        '#type' => 'select',
+        //'#title' => t(' &nbsp;... or from list'), //$element['#title'],
+        '#options' => $options,
+        '#default_value' =>$playlistId,
+      );
+
+      $options=array(''=>'-');
+      //$options+=$Spotify->getAlbumsOptions($field['settings']['Spotify_user_id']);
+      //$options+=$spotify->GetPlayLists($field['settings']['spotify_user_id']); //DEBE SER GET ALBUMS //HACE FALTA ACA ?
+      
+      $options = $spotify->GetAlbums(); //DEBE SER GET ALBUMS //HACE FALTA ACA ?
+      
+      $element['album_id'] = array(
+        '#prefix'=>'<br/>',
+        '#type' => 'textfield',
+        '#title' => t('Spotify Album ID'),
+        '#size' => 10,
+        '#default_value' =>$albumId,
+      );
+
+      $element['album_helper'] = array(
+        '#type' => 'select',
+        //'#title' => t(' &nbsp;... or from list'), //$element['#title'],
+        '#options' => $options,
+        '#default_value' =>$albumId,
+      );
+
+      if (module_exists('blve_spotify_playlist_backtones')){ //HACE FALTA ACA ?
+        $ajax=array(
+          'callback' => 'blve_spotify_playlist_field_widget_callback',
+          'wrapper' => 'backtones_list',
+          'method' => 'replace',
+          'effect' => 'fade',
+        );
+        $element['album_helper']['#ajax'] = $ajax;
+        $element['album_id']['#ajax']= $ajax;
+        $element['playlist_helper']['#ajax'] = $ajax;
+        $element['playlist_id']['#ajax'] = $ajax;
+
+        if (isset($items[$delta]['playlist_id'])){
+          $element += blve_spotify_playlist_backtones_element($items[$delta]['playlist_id']);
+        }
+      }
+      
+      break;
+  }
+  return $element;
+}
+
+function blve_spotify_playlist_validate_field($element, &$form_state) {
+  $value = $element['#value'];//grab the value of the field
+  if (!empty($value)) {
+    form_set_error('playlist_id', t('You must enter a valid playlist Id.'));
+  }else{
+    $value = $form_state['values']['field_playlist']['und'][0]['album_id'];//grab the value of the field // DE NUEVO HACE FALTA ACA ?
+    if (!empty($value)){
+      
+      $value='a'.$form_state['values']['field_playlist']['und'][0]['album_id'];
+      form_set_value($element, $value, $form_state);
+      
+    }
+  }
+}
+
+function blve_spotify_playlist_isAlbumId($id){ //WELL.... HACE FALTA ACA ?
+	
+	error_log("inicio blve_spotify_playlist_isAlbumId \n",3,'/mnt/var/log/registro.log');
+	
+	
+  if (substr($id,0,1)=='a'){
+    return substr($id,1);
+  }
+  return false;
+}
+
+
+function blve_spotify_playlist_field_widget_callback($form, $form_state){
+	
+	error_log("inicio blve_spotify_playlist_field_widget_callback \n",3,'/mnt/var/log/registro.log');
+	
+  $element=$form_state['input']['_triggering_element_name'];
+  $value=null;
+  if (FALSE!==strpos($element,'playlist_helper')){
+    $value=$form_state['values']['field_playlist'][LANGUAGE_NONE][0]['playlist_helper'];
+  }elseif (FALSE!==strpos($element,'playlist_id')){
+    $value=$form_state['values']['field_playlist'][LANGUAGE_NONE][0]['playlist_id'];
+  }elseif (FALSE!==strpos($element,'album_helper')){
+    $value=$form_state['values']['field_playlist'][LANGUAGE_NONE][0]['album_helper'];
+    if ($value) $value='a'.$value;
+  }elseif (FALSE!==strpos($element,'album_id')){
+    $value=$form_state['values']['field_playlist'][LANGUAGE_NONE][0]['album_id'];
+    if ($value) $value='a'.$value;
+  }
+  if ($value) return blve_spotify_playlist_backtones_element($value);
+  return false;
+}
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function blve_spotify_playlist_field_formatter_info() {
+  return array(
+      'blve_spotify_playlist_player' => array(
+        'label' => t('Spotify Widget Player'),
+        'field types' => array('blve_spotify_playlist'),
+        'settings'  => array( //Array of the settings we'll create
+          'width' => '400',
+          'height' => '80',
+          'cover'=>true,
+      		'vertical'=>false,
+      		'list'=>true,
+          'title'=>''
+        ),
+      ),
+      'blve_spotify_playlist_playlist' => array(
+        'label' => t('Trackslist'),
+        'field types' => array('blve_spotify_playlist'),
+        'settings'  => array( //Array of the settings we'll create
+          'show_play' => true,
+          'show_add' => true,
+          'show_share' => false,
+          'show_comment' => false,
+          'show_list' => false,
+        ),
+      ),
+      'blve_spotify_playlist_actions' => array(
+        'label' => t('Action Buttons'),
+        'field types' => array('blve_spotify_playlist'),
+        'settings'  => array( //Array of the settings we'll create
+          'show_add' => true,
+          'show_share' => false,
+          'show_comment' => false,
+          'show_list' => false,
+        ),
+      ),
+      'blve_spotify_playlist_id' => array(
+        'label' => t('Display Playlist ID'),
+        'field types' => array('blve_spotify_playlist'),
+      ),
+
+  );
+}
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function blve_spotify_playlist_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+	
+	error_log("inicio blve_spotify_playlist_field_formatter_settings_form \n",3,'/mnt/var/log/registro.log');
+	
+  //This gets the view_mode where our settings are stored
+  $display = $instance['display'][$view_mode];
+  //This gets the actual settings
+  $settings = $display['settings'];
+  //Initialize the element variable
+  $element = array();
+
+  switch ($display['type']){
+    case 'blve_spotify_playlist_player':
+      $element['width'] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('Width'),
+        '#description'    => t('Playlist width.'),
+        '#default_value'  => $settings['width'],
+      );
+      $element['height'] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('Height'),
+        '#description'    => t('Playlist height'),
+        '#default_value'  => $settings['height'],
+      );
+      $element['title'] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('Title'),
+        '#description'    => t('This text will appear at the top of the playlist.'),
+        '#default_value'  => $settings['title'],
+      );
+      $element['vertical'] = array(
+    		'#type'           => 'checkbox',
+    		'#title'          => t('Vertical'),
+    		'#description'    => t('Playlist orientation.'),
+    		'#default_value'  => $settings['vertical'],
+      );
+      $element['cover'] = array(
+    		'#type'           => 'checkbox',
+    		'#title'          => t('Cover'),
+    		'#description'    => t('Display album cover in playlist.'),
+    		'#default_value'  => $settings['title'],
+      );
+      $element['list'] = array(
+    		'#type'           => 'checkbox',
+    		'#title'          => t('List'),
+    		'#description'    => t('Display List.'),
+    		'#default_value'  => $settings['list'],
+      );
+      break;
+    case 'blve_spotify_playlist_playlist':
+      $element['show_play'] = array(
+        '#type'           => 'checkbox',
+        '#title'          => t('Play Buttons'),
+        '#description'    => t('Show Play Buttons'),
+        '#default_value'  => $settings['show_play'],
+      );
+      //break; //comentar este break no es un error.
+    case 'blve_spotify_playlist_actions':
+      $element['show_play'] = array(
+          '#type'           => 'checkbox',
+          '#title'          => t('Play Button'),
+          '#description'    => t('Show Play Button'),
+          '#default_value'  => $settings['show_play'],
+      );
+      $element['show_add'] = array(
+        '#type'           => 'checkbox',
+        '#title'          => t('Add Buttons'),
+        '#description'    => t('Show Add Button'),
+        '#default_value'  => $settings['show_add'],
+      );
+      $element['show_share'] = array(
+          '#type'           => 'checkbox',
+          '#title'          => t('Share Button'),
+          '#description'    => t('Show Share Button'),
+          '#default_value'  => $settings['show_share'],
+      );
+      $element['show_comment'] = array(
+          '#type'           => 'checkbox',
+          '#title'          => t('Comment Buttons'),
+          '#description'    => t('Show Comment Button'),
+          '#default_value'  => $settings['show_comment'],
+      );
+      $element['show_list'] = array(
+          '#type'           => 'checkbox',
+          '#title'          => t('List Button'),
+          '#description'    => t('Show More Info Button'),
+          '#default_value'  => $settings['show_list'],
+      );
+      /*
+      $element['show_icons'] = array(
+          '#type'           => 'checkbox',
+          '#title'          => t('Show Icons'),
+          '#description'    => t('Show Icon in each Button'),
+          '#default_value'  => $settings['show_icons'],
+      );
+      */
+      break;
+  }
+  return $element;
+}
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function blve_spotify_playlist_field_formatter_settings_summary($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $summary='';
+  switch ($display['type']){
+    case 'blve_spotify_playlist_player':
+      $summary = t('@title Size: @width x @height px', array(
+          '@width'     => $settings['width'],
+          '@height'     => $settings['height'],
+          '@title'  => $settings['title'],
+      ));
+      break;
+    case 'blve_spotify_playlist_playlist':
+      $summary=($settings['show_play'])?'Show Play button<br>':'Hide Play button<br>';
+      //break;
+    case 'blve_spotify_playlist_actions':
+      if (!empty($settings['show_play'])){ $summary.='Play  | '; }
+      if (!empty($settings['show_add'])){ $summary.='Add  | '; }
+      if (!empty($settings['show_share'])){ $summary.='Share  | '; }
+      if (!empty($settings['show_comment'])){ $summary.='Comment  | '; }
+      if (!empty($settings['show_list'])){ $summary.='List  | '; }
+      //if (!empty($settings['show_icons'])){ $summary.='Icons  | '; }
+      $summary=substr($summary,0,-4);
+      break;
+  }
+
+  return $summary;
+}
+
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function blve_spotify_playlist_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+  $settings = $display['settings']; // get the settings
+  $path=url(drupal_get_path_alias('node/'.$entity->nid));
+	switch ($display['type']) {
+    case 'blve_spotify_playlist_player':
+      //$_SESSION['drupal_redirect']=current_path();
+      ctools_include('ajax');
+      ctools_include('modal');
+      ctools_modal_add_js();
+      foreach ($items as $delta => $item) {
+        if (isset($item['playlist_id'])) {
+          $element[$delta]['#markup'] = theme('spotify_player', array(
+            'width' => $settings['width'],
+            'height' => $settings['height'],
+            'cover' => @$settings['cover'],
+            'title' => $settings['title'],
+          	'vertical' => @$settings['vertical'],
+            'playlistId' => $item['playlist_id'],
+          	'list' => @$item['list'],
+            'appId' => variable_get('spotify_client_id',null)
+           ));
+        }
+      }
+      break;
+    case 'blve_spotify_playlist_playlist':
+      foreach ($items as $delta => $item) {
+        if (!empty($item['playlist_id'])) {
+          //module_load_include('inc','Spotify'); //TODO
+          //$Spotify= new Spotify(variable_get('Spotify_appid'),variable_get('Spotify_secret'));
+          
+          //module_load_include('inc','blve_spotify');
+          module_load_include('php', 'blve_spotify', '../blve_spotify.class.php');
+    			$spotify = blve_spotify_class::getInstance(); //instance of the class
+          
+          
+          if ($albumId=blve_spotify_playlist_isAlbumId($item['playlist_id'])){ //TODO
+            $playlist = $spotify->getAlbum($albumId); //TODO
+          }else{
+            $playlist = $spotify->getPlaylist($item['playlist_id']); //TODO
+          }
+          $title=$playlist->title;
+          if (isset($playlist->tracks)){
+            $tracks=$playlist->tracks->data;
+            if (module_exists('blve_spotify_playlist_backtones')){
+              $tracks=blve_spotify_playlist_backtones_update_list($tracks);
+            }
+          }else{
+            $tracks=null;
+            $item['playlist_id']=null;
+            $settings['show_play']=false;
+            $settings['show_add']=false;
+          }
+          $device=mobile_tools_is_mobile_device();                      
+          $element[$delta]['#markup'] = theme('blve_spotify_playlist', array(
+            'playlistId' => $item['playlist_id'],
+            'title' => $title,
+            'tracks' => $tracks,
+            'show_play' => @$settings['show_play'],
+            'show_add' => @$settings['show_add'],
+            'show_share' => @$settings['show_share'],
+            'show_comment' => @$settings['show_comment'],
+            'show_list' => @$settings['show_list'],
+            'node_path' => $path,
+            'nid' => $entity->nid,
+            'modal'=> ($device['type']=='desktop'),
+          ));
+          $_SESSION['spotify_actions_settings']=$settings;
+        }
+      }
+      break;
+    case 'blve_spotify_playlist_actions':
+      $device=mobile_tools_is_mobile_device();
+      foreach ($items as $delta => $item) {
+
+        if (!empty($item['playlist_id'])) {
+          $element[$delta]['#markup'] = theme('spotify_actions', array(
+            'playlistId' => $item['playlist_id'],
+            'show_play' => @$settings['show_play'],
+            'show_add' => @$settings['show_add'],
+            'show_share' => @$settings['show_share'],
+            'show_comment' => @$settings['show_comment'],
+            'show_list' => @$settings['show_list'],
+            //'show_icons' => @$settings['show_icons'],
+            'node_path' => $path,
+            'nid' => $entity->nid,
+            'modal' =>($device['type']=='desktop'),
+          ));
+        }
+      }
+      break;
+    case 'blve_spotify_playlist_id':
+      foreach ($items as $delta => $item) {
+        if (!empty($item['playlist_id'])) {
+          $element[$delta]['#markup'] = $item['playlist_id'];
+        }
+      }
+      break;
+  }
+  return $element;
+}
+
+
+
+function blve_spotify_playlist_theme($existing, $type, $theme, $path){
+  return array(
+      'spotify_player' => array(
+        'variables' => array(
+          'width' => NULL,
+          'height' => NULL,
+          'cover' => NULL,
+          'title' => NULL,
+          'playlistId' =>NULL,
+        	'vertical' =>'vertical',
+        	'list' =>true,
+          'appId' => variable_get('spotify_appid',null)
+        ),
+        'template' => 'templates/spotify_player'
+      ),
+      'blve_spotify_playlist' => array(
+          'variables' => array(
+              'playlistId' => NULL,
+              'title' => NULL,
+              'tracks' => array(),
+              'show_play'=>false,
+              'show_add' => true,
+              'show_share' => false,
+              'show_comment' => false,
+              'show_list' => false,
+              'node_path' => null,
+              'modal' => true,
+          ),
+          'template' => 'templates/blve_spotify_playlist'         
+      ),
+      'spotify_actions' => array(
+          'variables' => array(
+              'playlistId' => NULL,
+              'show_play' => true,
+              'show_add' => true,
+              'show_share' => false,
+              'show_comment' => false,
+              'show_list' => false,
+              //'show_icons' => true,
+              'node_path' => null,
+              'nid' => NULL,
+              'modal' => true,
+          ),
+          'template' => 'templates/spotify_actions'
+      ),
+   );
+}
+
+//-----------------alter para display suites add new field-------------
+
+
+
+//???????????????????????????
+
+ 
+ /**
+ * Implements hook_ds_fields_info().
+ */
+function blve_spotify_playlist_ds_fields_info($entity_type) {
+  $fields = array();
+
+  $fields['node']['article_footnote'] = array(
+    'title' => t('PlayList Buttons'),
+    'field_type' => DS_FIELD_TYPE_FUNCTION,
+    'function' => 'blve_spotify_playlist_ds_field_buttons',
+  );
+
+  if (isset($fields[$entity_type])) {
+    return array($entity_type => $fields[$entity_type]);
+  }
+  return;
+} 
+
+
+/**
+ * Render 
+ */
+function blve_spotify_playlist_ds_field_buttons($field) {
+  $entity=$field['entity'];
+  $playlist_id =  @$entity->field_playlist['und'][0]['playlist_id'];
+
+  $settings=$_SESSION['spotify_actions_settings'];
+  $path=url(drupal_get_path_alias('node/'.$entity->nid));
+  $device=mobile_tools_is_mobile_device();
+  return theme('Spotify_actions', array(
+    'playlistId' =>$playlist_id,
+    'show_add' =>@$settings['show_add'],
+    'show_share' => @$settings['show_share'],
+    'show_comment' => @$settings['show_comment'],
+    'show_list' => @$settings['show_list'],
+    'node_path' => $path,
+    'nid' => $entity->nid,
+    'modal' =>($device['type']=='desktop'),
+  ));
+}
+
+

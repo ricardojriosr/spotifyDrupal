@@ -1,0 +1,54 @@
+#backtones_list label {
+	/*width: 200px;*/
+	display: inline-block;
+	vertical-align: baseline;
+}
+
+#backtones_list input{
+	vertical-align: top;
+	float:left;
+	margin-right:10px;
+} 
+
+#backtones_list .form-item{
+	margin:0;
+	border-bottom: 1px solid #ccc;
+	clear:both;
+}
+
+#backtones_list .form-item:after{
+	content: ".";
+	display: block;
+	height: 0;
+	clear: both;
+	visibility: hidden;
+}
+
+
+
+.field-type-spotify-playlist {
+	border: 1px solid #ccc;
+	padding: 2em;
+	margin: 1em 0;
+}
+
+.field-type-spotify-playlist label{
+    display: inline-block;
+}
+
+.field-type-spotify-playlist input[type="text"] {
+    margin-right: 1em;
+    padding: 5px;
+}
+
+.field-type-spotify-playlist .form-item.form-type-textfield {
+	float: left;
+}
+.field-type-spotify-playlist select {
+	margin: 19px 0 0 10px;
+}
+
+.field-type-spotify-playlist .form-item {
+	margin: 0;
+	padding: 0;
+}

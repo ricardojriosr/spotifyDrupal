@@ -1,0 +1,11 @@
+name = "Spotify Playlist"
+description = Spotify playlist field & widget.
+package = tools
+core = 7.x
+version = 7.x-1.46-dev
+
+dependencies[] = blve_spotify
+dependencies[] = field_ui
+
+
+files[] = ../blve_spotify.class.php

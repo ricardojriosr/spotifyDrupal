@@ -1,0 +1,270 @@
+<?php
+
+/**
+ * Implementa hook_menu().
+ *  Menu para configurar los datos basicos de configuracion de Spotify
+ */
+
+function blve_spotify_menu()
+{
+  $items['admin/config/services/blve_spotify'] = array(
+    'title' => 'BLVE Spotify',
+    'description' => 'Spotify services configuration.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('blve_spotify_admin_form'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'blve_spotify.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['admin/config/services/blve_spotify/spotify'] = array(
+      'title' => 'Spotify',
+      'description' => 'Spotify services configuration.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('blve_spotify_admin_form'),
+      'access arguments' => array('administer site configuration'),
+      'file' => 'blve_spotify.admin.inc',
+      'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['spotify/test'] = array(
+	'title' => 'Spotify',
+    'description' => 'Spotify Test Query.',
+    'page callback' => 'Prueba',
+	'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['spotify/login'] = array(
+	'title' => 'Spotify',
+    'description' => 'Spotify Login.',
+    'page callback' => 'blve_spotify_LoginSpotify',
+	'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['spotify/callback'] = array(
+	'title' => 'Spotify',
+    'description' => 'Spotify Callback.',
+    'page callback' => 'blve_spotify_callback',
+	'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['spotify/followplay'] = array(
+  'title' => 'Spotify follow playlist',
+    'description' => 'Spotify follow Playlist.',
+    //'page callback' => 'blve_spotify_PutfollowPlaylist',
+    'page callback' => 'blve_spotify_PutfollowPlaylist_two',
+  'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['spotify/follow'] = array(
+      'title' => 'Spotify follow',
+      'page callback' => 'blve_spotify_follow_page',
+      'access arguments' => array('access content'),
+      'type' => MENU_CALLBACK,
+  );
+  
+
+  
+  return $items;
+}
+
+function blve_spotify_LoginSpotify()
+{
+    $Spotify = blve_spotify_class::getInstance();
+    $Spotify->SpotifyLogin();
+}
+
+function blve_spotify_callback()
+{
+    $Spotify = blve_spotify_class::getInstance();
+    $Spotify->SpotifyLogin();
+    drupal_goto('spotify/follow');
+}
+
+function blve_spotify_theme($existing, $type, $theme, $path) {
+  return array(   
+    'blve_spotify_seguir' => array(  
+      'variables' => array('items'=>null),    
+      'template' => 'ppalfollow',
+      'path' => $path . '/templates',
+    ),  
+
+  );
+}
+
+
+function blve_spotify_follow_page(){
+  
+  return theme('blve_spotify_seguir'); //es la unica que debe existir
+
+}
+
+function blve_spotify_GetToken()
+{
+    $Spotify = blve_spotify_class::getInstance();
+    return $Spotify->GetTokenVariable();
+}
+
+
+/* Get Current User's Albums */
+function blve_spotify_getAlbums()
+{
+    $Spotify = blve_spotify_class::getInstance();
+    return $Spotify->GetAlbums();
+}
+
+/* Get the content of an Album */
+function blve_spotify_getAlbum($album_id)
+{
+    $Spotify = blve_spotify_class::getInstance();
+    return $Spotify->getAlbumTracks($album_id);
+}
+
+/* Get all tracks from an album  */
+function blve_spotify_getAlbumTracks($album_id)
+{
+    $Spotify = blve_spotify_class::getInstance();
+    return $Spotify->GetAlbum($album_id);
+}
+
+/* Get a user's playlists */
+function blve_spotify_getPlaylist($username)
+{
+    $Spotify = blve_spotify_class::getInstance();
+    return $Spotify->getPlaylist($username);
+}
+
+/* Get all tracks in a user's playlist */
+function blve_spotify_getPlaylistTracks($username, $album_id)
+{
+    $Spotify = blve_spotify_class::getInstance();
+    return $Spotify->getPlaylistTracks($username, $album_id);
+}
+
+/* Get Playlists from an user */
+function blve_spotify_GetPlayLists($NombreUsuario)
+{
+    $Spotify = blve_spotify_class::getInstance();
+	$resp = $Spotify->GetPlayLists($NombreUsuario);
+	return $resp;
+}
+
+function blve_spotify_GetUserLoggedInfo() 
+{
+    $Spotify = blve_spotify_class::getInstance();
+	$resp = $Spotify->GetUserLoggedInfo();
+	return $resp;
+}
+
+function blve_spotify_CreatePlaylist($usuario, $nombre_playlist) 
+{
+    $Spotify = blve_spotify_class::getInstance();
+	$resp = $Spotify->CreatePlaylist($usuario, $nombre_playlist);
+	return $resp;
+}
+
+function blve_spotify_GetUserInfo($username)
+{
+    $Spotify = blve_spotify_class::getInstance();
+	$resp = $Spotify->GetUserInfo($username);
+	return $resp;
+}
+
+function blve_spotify_AddTracksToPlaylist($usuario, $playlist_id, $array_tracks)
+{
+    $Spotify = blve_spotify_class::getInstance();
+	$resp = $Spotify->AddTracksToPlaylist($usuario, $playlist_id, $array_tracks);
+	return $resp;
+}
+
+function blve_spotify_IsLoggedIn() 
+{
+    $Spotify = blve_spotify_class::getInstance();
+	$resp = $Spotify->IsLoggedIn();
+	return $resp;
+}
+
+function blve_spotify_CopyAllPlaylistsUsers($usuario_origen, $usuario_destino)
+{
+    $Spotify = blve_spotify_class::getInstance();
+	$resp = $Spotify->CopyAllPlaylistsUsers($usuario_origen, $usuario_destino);
+	return $resp;
+}
+
+function blve_spotify_GetTracks($usuario, $PlayListId) 
+{
+    $Spotify = blve_spotify_class::getInstance();
+	$resp = $Spotify->GetTracks($usuario, $PlayListId);
+	return $resp;
+}
+
+
+/* Check to see if the current user is following one or more artists or other Spotify users.
+* @param string $type The type to check: either 'artist' or 'user'.
+* @param string|array $ids ID(s) of the user(s) or artist(s) to check for
+ @return array Whether each user or artist is followed.
+*/
+
+function blve_spotify_GetUserFollows($type, $ids) 
+{
+    $Spotify = blve_spotify_class::getInstance();;
+    $resp = $Spotify->GetFollows($type, $ids);
+    return $resp;
+}
+ /**
+     * Add the current user as a follower of one or more artists or other Spotify users.
+     * Requires a valid access token.
+     * https://developer.spotify.com/web-api/follow-artists-users/
+     *
+     * @param string $type The type to check: either 'artist' or 'user'.
+     * @param string|array $ids ID(s) of the user(s) or artist(s) to follow.
+     *
+     * @return bool Whether the artist or user was successfully followed.
+     */
+
+function blve_spotify_PutfollowArtistsOrUsers($type, $ids) 
+{
+    $Spotify = blve_spotify_class::getInstance();
+    $resp = $Spotify->PutfollowArtistsOrUsers($type, $ids);
+    return $resp;
+}
+
+
+function blve_spotify_PutfollowPlaylist($userId, $playlistId, $options = []) 
+{
+  error_log("blve_spotify_PutfollowPlaylist oegi \n",3,'/mnt/var/log/registro.log');
+  //$userId="oegifts";
+  $userId="reihead";
+  //$cableplay="https://play.spotify.com/track/54xbcKFYv2PC6ujERHppRj";
+  $playlistId="3DgHMQlEPowDxjb9sO4ObG";
+    $Spotify = blve_spotify_class::getInstance();
+  $resp = $Spotify->PutfollowPlaylist($userId, $playlistId,$options = []);
+
+  error_log("blve_spotify_PutfollowPlaylist: ".$resp."\n",3,'/mnt/var/log/registro.log');
+  return $resp;
+}
+
+
+function blve_spotify_PutfollowPlaylist_two($userId, $playlistId, $options = []) 
+{
+  error_log("blve_spotify_PutfollowPlaylist_two oegi \n",3,'/mnt/var/log/registro.log');
+  //$userId="oegifts";
+  $userId="spotify_uk_";
+  //$cableplay="https://play.spotify.com/track/54xbcKFYv2PC6ujERHppRj";
+
+  //$playlistId="5UYhZCbxqlZ0CtWJDjW3e7"; //Massive Dance Classics
+  
+  $playlistId="1Tv8NFvQY2aRuGi2JrOeyN"; //The Pop List
+  
+
+
+  $Spotify = blve_spotify_class::getInstance();
+  
+  $resp = $Spotify->PutfollowPlaylist($userId, $playlistId,$options = []);
+
+  error_log("blve_spotify_PutfollowPlaylist_two: ".$resp."\n",3,'/mnt/var/log/registro.log');
+  return $resp;
+}
+
+
+
+?>

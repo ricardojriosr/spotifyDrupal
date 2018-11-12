@@ -1,0 +1,14 @@
+name = Spotify BLVE
+description = Modulo Spotify hecho por BLVE
+core = 7.x
+package = tools
+php = 5.3
+version = 7.x-1.45-dev
+configure = admin/config/services/bvle_spotify
+
+files[] = spotify-web-api-php/vendor/autoload.php
+files[] = spotify-web-api-php/src/Request.php
+files[] = spotify-web-api-php/src/Session.php
+files[] = spotify-web-api-php/src/SpotifyWebAPI.php
+files[] = spotify-web-api-php/src/SpotifyWebAPIException.php
+files[] = blve_spotify.class.php
